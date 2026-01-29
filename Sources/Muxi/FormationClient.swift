@@ -268,11 +268,16 @@ actor FormationTransport {
         return unwrapEnvelope(parsed)
     }
     
-    func streamSse(_ method: String, _ path: String, params: [String: Any?]? = nil, body: [String: Any]? = nil, useAdmin: Bool = true, userId: String = "") -> AsyncThrowingStream<SseEvent, Error> {
-        AsyncThrowingStream { continuation in
+    nonisolated func streamSse(_ method: String, _ path: String, params: [String: Any?]? = nil, body: [String: Any]? = nil, useAdmin: Bool = true, userId: String = "") -> AsyncThrowingStream<SseEvent, Error> {
+        let baseUrl = self.baseUrl
+        let adminKey = self.adminKey
+        let clientKey = self.clientKey
+        let session = self.session
+        
+        return AsyncThrowingStream { continuation in
             Task {
-                let (url, _) = await buildUrl(path, params)
-                var headers = await buildHeaders(useAdmin: useAdmin, userId: userId, contentType: body != nil ? "application/json" : nil)
+                let (url, _) = Self.buildUrlStatic(baseUrl, path, params)
+                var headers = Self.buildHeadersStatic(useAdmin: useAdmin, userId: userId, contentType: body != nil ? "application/json" : nil, adminKey: adminKey, clientKey: clientKey)
                 headers["Accept"] = "text/event-stream"
                 
                 var request = URLRequest(url: URL(string: url)!)
@@ -325,5 +330,24 @@ actor FormationTransport {
         if let req = dict["request"] as? [String: Any], let id = req["id"] { result["request_id"] = result["request_id"] ?? id }
         if let ts = dict["timestamp"] { result["timestamp"] = result["timestamp"] ?? ts }
         return result
+    }
+    
+    private static func buildUrlStatic(_ baseUrl: String, _ path: String, _ params: [String: Any?]?) -> (String, String) {
+        let relPath = path.hasPrefix("/") ? path : "/\(path)"
+        var query = ""
+        if let params = params {
+            let filtered = params.compactMapValues { $0 }
+            if !filtered.isEmpty { query = "?" + filtered.map { "\($0.key)=\(String(describing: $0.value).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }.joined(separator: "&") }
+        }
+        let fullPath = relPath + query
+        return ("\(baseUrl)\(fullPath)", fullPath)
+    }
+    
+    private static func buildHeadersStatic(useAdmin: Bool, userId: String, contentType: String?, adminKey: String?, clientKey: String?, accept: String = "application/json") -> [String: String] {
+        var headers: [String: String] = ["X-Muxi-SDK": "swift/\(MuxiVersion.version)", "X-Muxi-Client": "swift/\(MuxiVersion.version)", "X-Muxi-Idempotency-Key": UUID().uuidString, "Accept": accept]
+        if useAdmin { headers["X-MUXI-ADMIN-KEY"] = adminKey ?? "" } else { headers["X-MUXI-CLIENT-KEY"] = clientKey ?? "" }
+        if !userId.isEmpty { headers["X-Muxi-User-ID"] = userId }
+        if let ct = contentType { headers["Content-Type"] = ct }
+        return headers
     }
 }
