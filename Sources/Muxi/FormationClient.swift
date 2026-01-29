@@ -73,6 +73,12 @@ public actor FormationClient {
         try await transport.request("POST", "/audiochat", body: payload, useAdmin: false, userId: userId)
     }
     
+    public func audioChatStream(_ payload: [String: Any], userId: String = "") -> AsyncThrowingStream<SseEvent, Error> {
+        var body = payload
+        body["stream"] = true
+        return transport.streamSse("POST", "/audiochat", body: body, useAdmin: false, userId: userId)
+    }
+    
     // Sessions
     public func getSessions(_ userId: String, limit: Int? = nil) async throws -> [String: Any]? {
         try await transport.request("GET", "/sessions", params: ["user_id": userId, "limit": limit], useAdmin: false, userId: userId)
