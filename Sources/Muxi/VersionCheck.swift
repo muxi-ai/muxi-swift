@@ -13,7 +13,7 @@ public enum VersionCheck {
         if checked { return }
         checked = true
         
-        guard isDevMode() else { return }
+        guard !notificationsDisabled() else { return }
         
         guard let latest = headers["X-Muxi-SDK-Latest"] ?? headers["x-muxi-sdk-latest"] else { return }
         guard isNewerVersion(latest: latest, current: MuxiVersion.version) else { return }
@@ -27,8 +27,8 @@ public enum VersionCheck {
         }
     }
     
-    private static func isDevMode() -> Bool {
-        ProcessInfo.processInfo.environment["MUXI_DEBUG"] == "1"
+    private static func notificationsDisabled() -> Bool {
+        ProcessInfo.processInfo.environment["MUXI_SDK_VERSION_NOTIFICATION"] == "0"
     }
     
     private static func getCachePath() -> URL? {
