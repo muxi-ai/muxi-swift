@@ -10,8 +10,9 @@ public struct FormationConfig {
     public var maxRetries: Int = 0
     public var timeout: Int = 30
     public var debug: Bool = false
+    var app: String?  // Internal: for Console telemetry
     
-    public init(formationId: String? = nil, url: String? = nil, serverUrl: String? = nil, baseUrl: String? = nil, adminKey: String? = nil, clientKey: String? = nil, maxRetries: Int = 0, timeout: Int = 30, debug: Bool = false) {
+    public init(formationId: String? = nil, url: String? = nil, serverUrl: String? = nil, baseUrl: String? = nil, adminKey: String? = nil, clientKey: String? = nil, maxRetries: Int = 0, timeout: Int = 30, debug: Bool = false, app: String? = nil) {
         self.formationId = formationId
         self.url = url
         self.serverUrl = serverUrl
@@ -21,6 +22,7 @@ public struct FormationConfig {
         self.maxRetries = maxRetries
         self.timeout = timeout
         self.debug = debug
+        self.app = app
     }
 }
 
@@ -35,7 +37,8 @@ public actor FormationClient {
             clientKey: config.clientKey,
             timeout: config.timeout,
             maxRetries: config.maxRetries,
-            debug: config.debug
+            debug: config.debug,
+            app: config.app
         )
     }
     
@@ -227,15 +230,17 @@ actor FormationTransport {
     private let timeout: Int
     private let maxRetries: Int
     private let debug: Bool
+    private let app: String?
     private let session: URLSession
     
-    init(baseUrl: String, adminKey: String?, clientKey: String?, timeout: Int, maxRetries: Int, debug: Bool) {
+    init(baseUrl: String, adminKey: String?, clientKey: String?, timeout: Int, maxRetries: Int, debug: Bool, app: String? = nil) {
         self.baseUrl = baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.adminKey = adminKey?.trimmingCharacters(in: .whitespaces)
         self.clientKey = clientKey?.trimmingCharacters(in: .whitespaces)
         self.timeout = timeout
         self.maxRetries = maxRetries
         self.debug = debug || ProcessInfo.processInfo.environment["MUXI_DEBUG"] == "1"
+        self.app = app
         
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = TimeInterval(timeout)
@@ -253,6 +258,13 @@ actor FormationTransport {
         
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw MuxiError.connection(message: "Invalid response") }
+        
+        // Check for SDK updates (non-blocking, once per process)
+        var responseHeaders: [String: String] = [:]
+        for (key, value) in httpResponse.allHeaderFields {
+            if let k = key as? String, let v = value as? String { responseHeaders[k] = v }
+        }
+        VersionCheck.checkForUpdates(responseHeaders)
         
         if httpResponse.statusCode >= 400 {
             var code: String?; var message = "Unknown error"
@@ -318,6 +330,7 @@ actor FormationTransport {
     
     private func buildHeaders(useAdmin: Bool, userId: String, contentType: String?, accept: String = "application/json") -> [String: String] {
         var headers: [String: String] = ["X-Muxi-SDK": "swift/\(MuxiVersion.version)", "X-Muxi-Client": "swift/\(MuxiVersion.version)", "X-Muxi-Idempotency-Key": UUID().uuidString, "Accept": accept]
+        if let app = app, !app.isEmpty { headers["X-Muxi-App"] = app }
         if useAdmin { headers["X-MUXI-ADMIN-KEY"] = adminKey ?? "" } else { headers["X-MUXI-CLIENT-KEY"] = clientKey ?? "" }
         if !userId.isEmpty { headers["X-Muxi-User-ID"] = userId }
         if let ct = contentType { headers["Content-Type"] = ct }

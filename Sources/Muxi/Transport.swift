@@ -9,15 +9,17 @@ public actor Transport {
     private let timeout: TimeInterval
     private let maxRetries: Int
     private let debug: Bool
+    private let app: String?
     private let session: URLSession
     
-    public init(baseUrl: String, keyId: String, secretKey: String, timeout: Int = 30, maxRetries: Int = 0, debug: Bool = false) {
+    public init(baseUrl: String, keyId: String, secretKey: String, timeout: Int = 30, maxRetries: Int = 0, debug: Bool = false, app: String? = nil) {
         self.baseUrl = baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.keyId = keyId.trimmingCharacters(in: .whitespaces)
         self.secretKey = secretKey.trimmingCharacters(in: .whitespaces)
         self.timeout = TimeInterval(timeout)
         self.maxRetries = maxRetries
         self.debug = debug || ProcessInfo.processInfo.environment["MUXI_DEBUG"] == "1"
+        self.app = app
         
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = TimeInterval(timeout)
@@ -50,6 +52,13 @@ public actor Transport {
                 }
                 
                 log("\(method) \(fullPath) -> \(httpResponse.statusCode) (\(String(format: "%.3f", elapsed))s)")
+                
+                // Check for SDK updates (non-blocking, once per process)
+                var responseHeaders: [String: String] = [:]
+                for (key, value) in httpResponse.allHeaderFields {
+                    if let k = key as? String, let v = value as? String { responseHeaders[k] = v }
+                }
+                VersionCheck.checkForUpdates(responseHeaders)
                 
                 if httpResponse.statusCode >= 400 {
                     let retryAfter = Int(httpResponse.value(forHTTPHeaderField: "Retry-After") ?? "0")
@@ -128,7 +137,7 @@ public actor Transport {
     }
     
     private func buildHeaders(method: String, path: String, accept: String = "application/json") -> [String: String] {
-        [
+        var headers = [
             "Authorization": Auth.buildAuthHeader(keyId: keyId, secretKey: secretKey, method: method, path: path),
             "Content-Type": "application/json",
             "Accept": accept,
@@ -136,6 +145,8 @@ public actor Transport {
             "X-Muxi-Client": "swift/\(MuxiVersion.version)",
             "X-Muxi-Idempotency-Key": UUID().uuidString
         ]
+        if let app = app, !app.isEmpty { headers["X-Muxi-App"] = app }
+        return headers
     }
     
     private func unwrapEnvelope(_ obj: Any) -> Any {

@@ -7,14 +7,16 @@ public struct ServerConfig {
     public var maxRetries: Int = 0
     public var timeout: Int = 30
     public var debug: Bool = false
+    var app: String?  // Internal: for Console telemetry
     
-    public init(url: String, keyId: String, secretKey: String, maxRetries: Int = 0, timeout: Int = 30, debug: Bool = false) {
+    public init(url: String, keyId: String, secretKey: String, maxRetries: Int = 0, timeout: Int = 30, debug: Bool = false, app: String? = nil) {
         self.url = url
         self.keyId = keyId
         self.secretKey = secretKey
         self.maxRetries = maxRetries
         self.timeout = timeout
         self.debug = debug
+        self.app = app
     }
 }
 
@@ -28,7 +30,8 @@ public actor ServerClient {
             secretKey: config.secretKey,
             timeout: config.timeout,
             maxRetries: config.maxRetries,
-            debug: config.debug
+            debug: config.debug,
+            app: config.app
         )
     }
     
