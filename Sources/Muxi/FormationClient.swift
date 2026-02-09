@@ -10,9 +10,10 @@ public struct FormationConfig {
     public var maxRetries: Int = 0
     public var timeout: Int = 30
     public var debug: Bool = false
+    public var mode: String = "live"  // "live" (default) or "draft" for local dev
     var app: String?  // Internal: for Console telemetry
     
-    public init(formationId: String? = nil, url: String? = nil, serverUrl: String? = nil, baseUrl: String? = nil, adminKey: String? = nil, clientKey: String? = nil, maxRetries: Int = 0, timeout: Int = 30, debug: Bool = false, app: String? = nil) {
+    public init(formationId: String? = nil, url: String? = nil, serverUrl: String? = nil, baseUrl: String? = nil, adminKey: String? = nil, clientKey: String? = nil, maxRetries: Int = 0, timeout: Int = 30, debug: Bool = false, mode: String = "live", app: String? = nil) {
         self.formationId = formationId
         self.url = url
         self.serverUrl = serverUrl
@@ -22,6 +23,7 @@ public struct FormationConfig {
         self.maxRetries = maxRetries
         self.timeout = timeout
         self.debug = debug
+        self.mode = mode
         self.app = app
     }
 }
@@ -215,7 +217,8 @@ public actor FormationClient {
             return url.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/v1"
         }
         if let serverUrl = config.serverUrl, let formationId = config.formationId, !serverUrl.isEmpty, !formationId.isEmpty {
-            return "\(serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/api/\(formationId)/v1"
+            let prefix = config.mode == "draft" ? "draft" : "api"
+            return "\(serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/\(prefix)/\(formationId)/v1"
         }
         throw MuxiError.validation(code: "INVALID_CONFIG", message: "must set baseUrl, url, or serverUrl+formationId", statusCode: 0, details: nil)
     }
