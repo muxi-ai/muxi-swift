@@ -1,6 +1,6 @@
 # MUXI Swift SDK
 
-Official Swift SDK for [MUXI](https://muxi.ai) — infrastructure for AI agents.
+Official Swift SDK for [MUXI](https://muxi.org) — infrastructure for AI agents.
 
 **Highlights**
 - Async/await with `URLSession` transport
