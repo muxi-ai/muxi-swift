@@ -77,8 +77,16 @@ public actor Transport {
                 
                 guard !data.isEmpty else { return nil }
                 
-                let parsed = try JSONSerialization.jsonObject(with: data)
-                return unwrapEnvelope(parsed)
+                do {
+                    let parsed = try JSONSerialization.jsonObject(with: data)
+                    return unwrapEnvelope(parsed)
+                } catch {
+                    // Return raw string for non-JSON responses (e.g., /ping returns "pong")
+                    if let str = String(data: data, encoding: .utf8) {
+                        return ["raw": str, "length": str.count] as [String: Any]
+                    }
+                    throw MuxiError.connection(message: "Invalid response format")
+                }
             } catch let error as MuxiError {
                 throw error
             } catch {
