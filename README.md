@@ -1,6 +1,13 @@
 # MUXI Swift SDK
 
-Official Swift SDK for the MUXI AI platform.
+Official Swift SDK for [MUXI](https://muxi.ai) — infrastructure for AI agents.
+
+**Highlights**
+- Async/await with `URLSession` transport
+- Built-in retries, idempotency, and typed errors
+- Streaming helpers for chat/audio and deploy/log tails
+
+> Need deeper usage notes? See the [User Guide](https://github.com/muxi-ai/muxi-swift/blob/main/USER_GUIDE.md) for streaming, retries, and auth details.
 
 ## Requirements
 
