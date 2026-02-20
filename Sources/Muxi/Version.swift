@@ -1,3 +1,3 @@
 public enum MuxiVersion {
-    public static let version = "0.20260211.0"
+    public static let version = "0.20260220.0"
 }
