@@ -179,7 +179,7 @@ public actor FormationClient {
     
     // Overlord / LLM
     public func getOverlordConfig() async throws -> [String: Any]? { try await transport.request("GET", "/overlord", useAdmin: true) }
-    public func getOverlordPersona() async throws -> [String: Any]? { try await transport.request("GET", "/overlord/persona", useAdmin: true) }
+    public func getOverlordSoul() async throws -> [String: Any]? { try await transport.request("GET", "/overlord/soul", useAdmin: true) }
     public func getLlmSettings() async throws -> [String: Any]? { try await transport.request("GET", "/llm/settings", useAdmin: true) }
     
     // Triggers / SOP / Audit

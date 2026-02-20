@@ -108,7 +108,7 @@ Error types: `authentication`, `authorization`, `notFound`, `validation`, `rateL
 | Identifiers | `getUserIdentifiersForUser`, `linkUserIdentifier`, `unlinkUserIdentifier` |
 | Triggers/SOP | `getTriggers`, `getTrigger`, `fireTrigger`, `getSops`, `getSop` |
 | Audit | `getAuditLog`, `clearAuditLog` |
-| Config | `getStatus`, `getConfig`, `getFormationInfo`, `getAsyncConfig`, `getA2aConfig`, `getLoggingConfig`, `getLoggingDestinations`, `getOverlordConfig`, `getOverlordPersona`, `getLlmSettings` |
+| Config | `getStatus`, `getConfig`, `getFormationInfo`, `getAsyncConfig`, `getA2aConfig`, `getLoggingConfig`, `getLoggingDestinations`, `getOverlordConfig`, `getOverlordSoul`, `getLlmSettings` |
 | Streaming | `streamEvents`, `streamLogs`, `streamRequest` |
 | User | `resolveUser` |
 
