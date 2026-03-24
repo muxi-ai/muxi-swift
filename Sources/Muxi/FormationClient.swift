@@ -146,6 +146,15 @@ public actor FormationClient {
     public func deleteSchedulerJob(_ jobId: String) async throws {
         _ = try await transport.request("DELETE", "/scheduler/jobs/\(jobId)", useAdmin: true)
     }
+    public func updateSchedulerJob(_ jobId: String, updates: [String: Any]) async throws -> [String: Any]? {
+        try await transport.request("PUT", "/scheduler/jobs/\(jobId)", body: updates, useAdmin: true)
+    }
+    public func pauseSchedulerJob(_ jobId: String) async throws -> [String: Any]? {
+        try await transport.request("POST", "/scheduler/jobs/\(jobId)/pause", useAdmin: true)
+    }
+    public func resumeSchedulerJob(_ jobId: String) async throws -> [String: Any]? {
+        try await transport.request("POST", "/scheduler/jobs/\(jobId)/resume", useAdmin: true)
+    }
     
     // Config endpoints
     public func getAsyncConfig() async throws -> [String: Any]? { try await transport.request("GET", "/async", useAdmin: true) }
