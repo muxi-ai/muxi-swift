@@ -309,19 +309,17 @@ actor FormationTransport {
                 headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
                 if let body = body { request.httpBody = try? JSONSerialization.data(withJSONObject: body) }
                 
-                var currentEvent: String?
-                var dataParts: [String] = []
+                var parser = SseEventParser()
                 
                 do {
                     let (bytes, _) = try await session.bytes(for: request)
                     for try await line in bytes.lines {
-                        if line.hasPrefix(":") { continue }
-                        if line.isEmpty {
-                            if !dataParts.isEmpty { continuation.yield(SseEvent(event: currentEvent ?? "message", data: dataParts.joined(separator: "\n"))) }
-                            currentEvent = nil; dataParts = []; continue
+                        if let event = try parser.process(line: line) {
+                            continuation.yield(event)
                         }
-                        if line.hasPrefix("event:") { currentEvent = String(line.dropFirst(6)).trimmingCharacters(in: .whitespaces) }
-                        else if line.hasPrefix("data:") { dataParts.append(String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)) }
+                    }
+                    if let event = try parser.flush() {
+                        continuation.yield(event)
                     }
                     continuation.finish()
                 } catch { continuation.finish(throwing: error) }
@@ -374,5 +372,66 @@ actor FormationTransport {
         if !userId.isEmpty { headers["X-Muxi-User-ID"] = userId }
         if let ct = contentType { headers["Content-Type"] = ct }
         return headers
+    }
+}
+
+struct SseEventParser {
+    private var currentEvent: String?
+    private var dataParts: [String] = []
+
+    mutating func process(line: String) throws -> SseEvent? {
+        if line.hasPrefix(":") { return nil }
+        if line.isEmpty { return try flush() }
+
+        let (field, value) = splitField(line)
+        if field == "event" {
+            currentEvent = value
+        } else if field == "data" {
+            dataParts.append(value)
+        }
+        return nil
+    }
+
+    mutating func flush() throws -> SseEvent? {
+        if currentEvent == nil && dataParts.isEmpty { return nil }
+
+        let event = SseEvent(event: currentEvent ?? "message", data: dataParts.joined(separator: "\n"))
+        currentEvent = nil
+        dataParts = []
+
+        if event.event == "error" {
+            throw routeError(from: event.data)
+        }
+
+        return event
+    }
+
+    private func splitField(_ line: String) -> (String, String) {
+        guard let idx = line.firstIndex(of: ":") else { return (line, "") }
+        let field = String(line[..<idx])
+        var value = String(line[line.index(after: idx)...])
+        if value.hasPrefix(" ") { value.removeFirst() }
+        return (field, value)
+    }
+
+    private func routeError(from data: String) -> MuxiError {
+        var code = "STREAM_ERROR"
+        var message = data.isEmpty ? "stream error" : data
+        var details: [String: Any]? = nil
+
+        if
+            let raw = data.data(using: .utf8),
+            let json = try? JSONSerialization.jsonObject(with: raw) as? [String: Any]
+        {
+            details = json
+            if let value = json["type"] as? String ?? json["code"] as? String ?? json["error"] as? String {
+                code = value
+            }
+            if let value = json["error"] as? String ?? json["message"] as? String {
+                message = value
+            }
+        }
+
+        return .unknown(code: code, message: message, statusCode: 0, details: details)
     }
 }
