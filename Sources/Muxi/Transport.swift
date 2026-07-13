@@ -157,7 +157,7 @@ public actor Transport {
         return headers
     }
     
-    private func unwrapEnvelope(_ obj: Any) -> Any {
+    nonisolated func unwrapEnvelope(_ obj: Any) -> Any {
         guard let dict = obj as? [String: Any], let data = dict["data"] else { return obj }
         
         var result = data
@@ -166,6 +166,9 @@ public actor Transport {
                 resultDict["request_id"] = resultDict["request_id"] ?? id
             } else if let id = dict["request_id"] {
                 resultDict["request_id"] = resultDict["request_id"] ?? id
+            }
+            if let req = dict["request"] as? [String: Any], let key = req["idempotency_key"] {
+                resultDict["idempotency_key"] = resultDict["idempotency_key"] ?? key
             }
             if let ts = dict["timestamp"] {
                 resultDict["timestamp"] = resultDict["timestamp"] ?? ts

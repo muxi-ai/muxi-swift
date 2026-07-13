@@ -28,6 +28,19 @@ public struct FormationConfig {
     }
 }
 
+/// Widgets from an `event: ui` stream frame; an empty array for other frames.
+///
+/// The runtime delivers the response envelope's optional `ui` array (options,
+/// action_link, mcp_resource widgets) as a single `event: ui` SSE frame before
+/// `event: done`. Unknown widget types should be ignored (progressive enhancement).
+public func parseUiWidgets(_ event: SseEvent) -> [[String: Any]] {
+    guard event.event == "ui",
+          let data = event.data.data(using: .utf8),
+          let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let ui = parsed["ui"] as? [[String: Any]] else { return [] }
+    return ui
+}
+
 public actor FormationClient {
     private let transport: FormationTransport
     
@@ -347,10 +360,11 @@ actor FormationTransport {
         return headers
     }
     
-    private func unwrapEnvelope(_ obj: Any) -> [String: Any]? {
+    nonisolated func unwrapEnvelope(_ obj: Any) -> [String: Any]? {
         guard let dict = obj as? [String: Any], let data = dict["data"] as? [String: Any] else { return obj as? [String: Any] }
         var result = data
         if let req = dict["request"] as? [String: Any], let id = req["id"] { result["request_id"] = result["request_id"] ?? id }
+        if let req = dict["request"] as? [String: Any], let key = req["idempotency_key"] { result["idempotency_key"] = result["idempotency_key"] ?? key }
         if let ts = dict["timestamp"] { result["timestamp"] = result["timestamp"] ?? ts }
         return result
     }
